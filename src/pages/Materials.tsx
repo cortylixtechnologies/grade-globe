@@ -27,7 +27,7 @@ const Materials = () => {
   const { toast } = useToast();
   const { user, isPremium } = useAuth();
 
-  const categories = ["All", "Form 1", "Form 2", "Form 3", "Form 4"];
+  const categories = ["All", "Form 5", "Form 6"];
 
   useEffect(() => {
     fetchMaterials();
