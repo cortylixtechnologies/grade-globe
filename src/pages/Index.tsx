@@ -5,6 +5,7 @@ import PlanComparison from "@/components/home/PlanComparison";
 import FeaturesSection from "@/components/home/FeaturesSection";
 import HowItWorks from "@/components/home/HowItWorks";
 import CTASection from "@/components/home/CTASection";
+import RequestMaterialsSection from "@/components/home/RequestMaterialsSection";
 
 const Index = () => {
   return (
@@ -15,6 +16,7 @@ const Index = () => {
         <FeaturesSection />
         <PlanComparison />
         <HowItWorks />
+        <RequestMaterialsSection />
         <CTASection />
       </main>
       <Footer />
