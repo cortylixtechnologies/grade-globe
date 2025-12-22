@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Crown, LogIn, UserPlus, MessageCircle, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const [loginEmail, setLoginEmail] = useState("");
@@ -19,33 +20,74 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, loading, isAdmin, signIn, signUp } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      if (isAdmin) {
+        navigate("/admin");
+      } else {
+        navigate("/materials");
+      }
+    }
+  }, [user, loading, isAdmin, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Placeholder - will be replaced with actual auth
-    setTimeout(() => {
+    const { error } = await signIn(loginEmail, loginPassword);
+    
+    if (error) {
       toast({
-        title: "Login Coming Soon",
-        description: "Premium login functionality requires database setup. Contact admin via WhatsApp to get started.",
+        title: "Login Failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive",
       });
-      setIsLoading(false);
-    }, 1000);
+    } else {
+      toast({
+        title: "Welcome Back!",
+        description: "You have successfully logged in.",
+      });
+    }
+    
+    setIsLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Placeholder - will be replaced with actual auth
-    setTimeout(() => {
+    if (signupPassword.length < 6) {
       toast({
-        title: "Sign Up Coming Soon",
-        description: "Premium registration requires admin approval. Contact us via WhatsApp to request access.",
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
       });
       setIsLoading(false);
-    }, 1000);
+      return;
+    }
+
+    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    
+    if (error) {
+      let message = error.message;
+      if (error.message.includes("already registered")) {
+        message = "This email is already registered. Please login instead.";
+      }
+      toast({
+        title: "Sign Up Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Account Created!",
+        description: "You can now access premium materials.",
+      });
+    }
+    
+    setIsLoading(false);
   };
 
   const openWhatsAppPremium = () => {
@@ -66,6 +108,14 @@ const Login = () => {
       description: "Complete your Premium subscription request via WhatsApp.",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -153,7 +203,7 @@ const Login = () => {
                   <CardHeader>
                     <CardTitle>Create Account</CardTitle>
                     <CardDescription>
-                      Request a Premium account. Admin approval required.
+                      Sign up to access premium materials.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -194,7 +244,7 @@ const Login = () => {
                   </CardContent>
                   <CardFooter className="flex flex-col gap-4">
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Requesting..." : "Request Premium Access"}
+                      {isLoading ? "Creating account..." : "Create Account"}
                     </Button>
                   </CardFooter>
                 </form>
