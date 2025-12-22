@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookOpen, User, LogIn } from "lucide-react";
+import { Menu, X, BookOpen, LogIn, Shield } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, isAdmin, signOut } = useAuth();
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -44,15 +46,39 @@ const Header = () => {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/login">
-              <LogIn className="h-4 w-4 mr-2" />
-              Premium Login
-            </Link>
-          </Button>
-          <Button variant="premium" size="sm" asChild>
-            <Link to="/login">Go Premium</Link>
-          </Button>
+          {user ? (
+            <>
+              {isAdmin && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/admin">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Admin Panel
+                  </Link>
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => signOut()}>
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/login">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Premium Login
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/admin">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Admin
+                </Link>
+              </Button>
+              <Button variant="premium" size="sm" asChild>
+                <Link to="/login">Go Premium</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -87,18 +113,52 @@ const Header = () => {
               </Link>
             ))}
             <hr className="my-2 border-border" />
-            <Link
-              to="/login"
-              className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Premium Login
-            </Link>
-            <Button variant="premium" className="mt-2" asChild>
-              <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                Go Premium
-              </Link>
-            </Button>
+            {user ? (
+              <>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-primary hover:bg-accent transition-colors flex items-center gap-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Admin Panel
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    signOut();
+                    setIsMenuOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent transition-colors text-left"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Premium Login
+                </Link>
+                <Link
+                  to="/admin"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin Login
+                </Link>
+                <Button variant="premium" className="mt-2" asChild>
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                    Go Premium
+                  </Link>
+                </Button>
+              </>
+            )}
           </nav>
         </div>
       )}

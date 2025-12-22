@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +25,8 @@ import {
   X,
   Crown,
   RefreshCw,
-  UserPlus
+  UserPlus,
+  LogIn
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,9 +44,14 @@ interface PremiumUserWithProfile extends PremiumSubscription {
 }
 
 const AdminDashboard = () => {
-  const { user, loading, isAdmin, signOut } = useAuth();
+  const { user, loading, isAdmin, signIn, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   const [materials, setMaterials] = useState<Material[]>([]);
   const [premiumUsers, setPremiumUsers] = useState<PremiumUserWithProfile[]>([]);
@@ -65,10 +73,25 @@ const AdminDashboard = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    
+    const { error } = await signIn(loginEmail, loginPassword);
+    
+    if (error) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive",
+      });
+    }
+    
+    setIsLoggingIn(false);
+  };
+
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login");
-    } else if (!loading && user && !isAdmin) {
+    if (!loading && user && !isAdmin) {
       toast({
         title: "Access Denied",
         description: "You don't have admin privileges.",
@@ -334,6 +357,61 @@ const AdminDashboard = () => {
       });
     }
   };
+
+  // Show login form if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        
+        <main className="flex-1 flex items-center justify-center py-12 px-4">
+          <Card className="w-full max-w-md shadow-lg">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl gradient-hero">
+                <Shield className="h-7 w-7 text-primary-foreground" />
+              </div>
+              <CardTitle className="font-display text-2xl">Admin Login</CardTitle>
+              <CardDescription>Sign in with your admin credentials</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleAdminLogin}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="admin-email">Email</Label>
+                  <Input
+                    id="admin-email"
+                    type="email"
+                    placeholder="admin@example.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-password">Password</Label>
+                  <Input
+                    id="admin-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardContent className="pt-0">
+                <Button type="submit" className="w-full" disabled={isLoggingIn}>
+                  <LogIn className="h-4 w-4 mr-2" />
+                  {isLoggingIn ? "Signing in..." : "Sign In as Admin"}
+                </Button>
+              </CardContent>
+            </form>
+          </Card>
+        </main>
+
+        <Footer />
+      </div>
+    );
+  }
 
   if (loading || !isAdmin) {
     return (
