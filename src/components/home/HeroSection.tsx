@@ -21,7 +21,7 @@ const HeroSection = () => {
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/20 px-4 py-1.5 mb-6 animate-fade-up">
             <BookOpen className="h-4 w-4 text-primary-foreground" />
             <span className="text-sm font-medium text-primary-foreground">
-              #1 Geography Resource in Tanzania
+              TASSA GEO-ACADEMY - Form 5 & 6
             </span>
           </div>
 
