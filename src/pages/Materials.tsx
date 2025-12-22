@@ -1,88 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Search, Download, MessageCircle, BookOpen, Calendar, FileText, Lock } from "lucide-react";
+import { Search, Download, MessageCircle, BookOpen, Calendar, FileText, Lock, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { Link } from "react-router-dom";
 
-// Sample materials data - in production this would come from a database
-const sampleMaterials = [
-  {
-    id: "1",
-    title: "Geography Form 4 NECTA 2023",
-    description: "National Examination Council of Tanzania (NECTA) Geography paper for Form 4 students.",
-    year: "2023",
-    category: "Form 4",
-    accessCode: "GEO2023F4",
-  },
-  {
-    id: "2",
-    title: "Geography Form 2 NECTA 2023",
-    description: "NECTA Geography examination paper for Form 2 students with marking scheme.",
-    year: "2023",
-    category: "Form 2",
-    accessCode: "GEO2023F2",
-  },
-  {
-    id: "3",
-    title: "Geography Form 4 NECTA 2022",
-    description: "Previous year Geography paper for Form 4 students. Includes practical questions.",
-    year: "2022",
-    category: "Form 4",
-    accessCode: "GEO2022F4",
-  },
-  {
-    id: "4",
-    title: "Geography Form 6 ACSEE 2023",
-    description: "Advanced Certificate of Secondary Education Examination Geography paper.",
-    year: "2023",
-    category: "Form 6",
-    accessCode: "GEO2023F6",
-  },
-  {
-    id: "5",
-    title: "Geography Form 4 Mock Exam 2023",
-    description: "Mock examination paper for Form 4 students with detailed answers.",
-    year: "2023",
-    category: "Mock",
-    accessCode: "GEO2023MOCK",
-  },
-  {
-    id: "6",
-    title: "Geography Form 2 NECTA 2022",
-    description: "NECTA Geography paper for Form 2 students from the previous year.",
-    year: "2022",
-    category: "Form 2",
-    accessCode: "GEO2022F2",
-  },
-];
-
-interface Material {
-  id: string;
-  title: string;
-  description: string;
-  year: string;
-  category: string;
-  accessCode: string;
-}
+type Material = Tables<"materials">;
 
 const Materials = () => {
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [showAccessDialog, setShowAccessDialog] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const { toast } = useToast();
+  const { user, isPremium } = useAuth();
 
-  const categories = ["All", "Form 2", "Form 4", "Form 6", "Mock"];
+  const categories = ["All", "Form 1", "Form 2", "Form 3", "Form 4"];
 
-  const filteredMaterials = sampleMaterials.filter((material) => {
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const fetchMaterials = async () => {
+    const { data, error } = await supabase
+      .from("materials")
+      .select("*")
+      .eq("enabled", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching materials:", error);
+    } else {
+      setMaterials(data || []);
+    }
+    setLoading(false);
+  };
+
+  const filteredMaterials = materials.filter((material) => {
     const matchesSearch = material.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      material.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (material.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesCategory = selectedCategory === "All" || material.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -93,6 +61,12 @@ const Materials = () => {
   };
 
   const handleDownload = (material: Material) => {
+    // If user is premium, open directly
+    if (isPremium) {
+      window.open(material.drive_link, "_blank");
+      return;
+    }
+    
     setSelectedMaterial(material);
     setAccessCodeInput("");
     setShowAccessDialog(true);
@@ -120,24 +94,56 @@ const Materials = () => {
     });
   };
 
-  const verifyAccessCode = () => {
-    if (!selectedMaterial) return;
+  const verifyAccessCode = async () => {
+    if (!selectedMaterial || !accessCodeInput.trim()) return;
     
-    if (accessCodeInput.toUpperCase() === selectedMaterial.accessCode) {
+    setIsVerifying(true);
+
+    // Check if code exists and is unused for this material
+    const { data: codeData, error } = await supabase
+      .from("access_codes")
+      .select("*")
+      .eq("material_id", selectedMaterial.id)
+      .eq("code", accessCodeInput.toUpperCase().trim())
+      .eq("used", false)
+      .maybeSingle();
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to verify code. Please try again.",
+        variant: "destructive",
+      });
+      setIsVerifying(false);
+      return;
+    }
+
+    if (codeData) {
+      // Mark code as used
+      await supabase
+        .from("access_codes")
+        .update({ 
+          used: true, 
+          used_at: new Date().toISOString(),
+          used_by: user?.email || "anonymous"
+        })
+        .eq("id", codeData.id);
+
       toast({
         title: "Access Granted! 🎉",
         description: `You can now download "${selectedMaterial.title}"`,
       });
       setShowAccessDialog(false);
-      // In production, this would trigger the actual download
-      window.open("https://drive.google.com", "_blank");
+      window.open(selectedMaterial.drive_link, "_blank");
     } else {
       toast({
         title: "Invalid Code",
-        description: "The access code you entered is incorrect. Please try again.",
+        description: "The access code is incorrect or has already been used.",
         variant: "destructive",
       });
     }
+    
+    setIsVerifying(false);
   };
 
   return (
@@ -156,6 +162,12 @@ const Materials = () => {
                 Browse our collection of high-quality Geography past papers. 
                 Pay 2,000 TZS per material or go Premium for unlimited access.
               </p>
+              {isPremium && (
+                <div className="mt-4 inline-flex items-center gap-2 bg-accent/20 text-accent-foreground px-4 py-2 rounded-full">
+                  <Crown className="h-4 w-4" />
+                  <span className="text-sm font-medium">Premium Access Active</span>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -195,7 +207,12 @@ const Materials = () => {
         {/* Materials Grid */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            {filteredMaterials.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-muted-foreground mt-4">Loading materials...</p>
+              </div>
+            ) : filteredMaterials.length > 0 ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredMaterials.map((material, idx) => (
                   <Card 
@@ -230,24 +247,38 @@ const Materials = () => {
                     </CardContent>
 
                     <CardFooter className="flex gap-2">
-                      <Button 
-                        variant="basic" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleRequestAccess(material)}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        Request
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleDownload(material)}
-                      >
-                        <Lock className="h-4 w-4 mr-1" />
-                        Enter Code
-                      </Button>
+                      {isPremium ? (
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => handleDownload(material)}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download
+                        </Button>
+                      ) : (
+                        <>
+                          <Button 
+                            variant="basic" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleRequestAccess(material)}
+                          >
+                            <MessageCircle className="h-4 w-4 mr-1" />
+                            Request
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleDownload(material)}
+                          >
+                            <Lock className="h-4 w-4 mr-1" />
+                            Enter Code
+                          </Button>
+                        </>
+                      )}
                     </CardFooter>
                   </Card>
                 ))}
@@ -258,9 +289,20 @@ const Materials = () => {
                 <h3 className="font-display text-xl font-semibold text-foreground mb-2">
                   No materials found
                 </h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search or filter criteria.
+                <p className="text-muted-foreground mb-4">
+                  {materials.length === 0 
+                    ? "No materials have been added yet. Check back soon!"
+                    : "Try adjusting your search or filter criteria."
+                  }
                 </p>
+                {!isPremium && (
+                  <Button variant="premium" asChild>
+                    <Link to="/login">
+                      <Crown className="h-4 w-4 mr-2" />
+                      Get Premium Access
+                    </Link>
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -315,7 +357,7 @@ const Materials = () => {
             <Input
               placeholder="Enter your access code"
               value={accessCodeInput}
-              onChange={(e) => setAccessCodeInput(e.target.value)}
+              onChange={(e) => setAccessCodeInput(e.target.value.toUpperCase())}
               className="text-center font-mono text-lg"
             />
             <p className="text-xs text-muted-foreground mt-2 text-center">
@@ -327,9 +369,9 @@ const Materials = () => {
             <Button variant="outline" onClick={() => setShowAccessDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={verifyAccessCode}>
+            <Button onClick={verifyAccessCode} disabled={isVerifying}>
               <Download className="h-4 w-4 mr-2" />
-              Download
+              {isVerifying ? "Verifying..." : "Download"}
             </Button>
           </DialogFooter>
         </DialogContent>
