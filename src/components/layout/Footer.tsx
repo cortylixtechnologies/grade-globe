@@ -12,13 +12,13 @@ const Footer = () => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-hero">
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-display text-xl font-semibold text-foreground">
-                GeoPapers
+              <span className="font-display text-lg font-semibold text-foreground">
+                TASSA GEO-ACADEMY
               </span>
             </Link>
             <p className="text-muted-foreground max-w-md">
-              Your trusted source for high-quality Geography past papers. Helping 
-              Tanzanian students excel in their studies with easy access to learning materials.
+              Your trusted source for high-quality Geography past papers for Form 5 & 6. 
+              Helping Tanzanian students excel in their studies with easy access to learning materials.
             </p>
           </div>
 
@@ -62,7 +62,7 @@ const Footer = () => {
 
         <div className="mt-8 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} GeoPapers. All rights reserved.
+            © {new Date().getFullYear()} TASSA GEO-ACADEMY. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
             Made with ❤️ for Tanzanian Students

@@ -23,8 +23,8 @@ const Header = () => {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-hero shadow-sm group-hover:shadow-md transition-shadow">
             <BookOpen className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-display text-xl font-semibold text-foreground">
-            GeoPapers
+          <span className="font-display text-lg font-semibold text-foreground">
+            TASSA GEO-ACADEMY
           </span>
         </Link>
 
