@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { 
   Shield, 
   BookOpen, 
@@ -26,7 +27,10 @@ import {
   Crown,
   RefreshCw,
   UserPlus,
-  LogIn
+  LogIn,
+  Key,
+  Copy,
+  Ticket
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,11 +39,18 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Material = Tables<"materials">;
 type PremiumSubscription = Tables<"premium_subscriptions">;
+type AccessCode = Tables<"access_codes">;
 
 interface PremiumUserWithProfile extends PremiumSubscription {
   profile?: {
     email: string;
     full_name: string | null;
+  };
+}
+
+interface AccessCodeWithMaterial extends AccessCode {
+  material?: {
+    title: string;
   };
 }
 
@@ -55,9 +66,11 @@ const AdminDashboard = () => {
   
   const [materials, setMaterials] = useState<Material[]>([]);
   const [premiumUsers, setPremiumUsers] = useState<PremiumUserWithProfile[]>([]);
+  const [accessCodes, setAccessCodes] = useState<AccessCodeWithMaterial[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [showMaterialDialog, setShowMaterialDialog] = useState(false);
   const [showUserDialog, setShowUserDialog] = useState(false);
+  const [showCodeDialog, setShowCodeDialog] = useState(false);
   const [newMaterial, setNewMaterial] = useState({
     title: "",
     description: "",
@@ -70,6 +83,10 @@ const AdminDashboard = () => {
     password: "",
     full_name: "",
     expires_months: "3",
+  });
+  const [newCode, setNewCode] = useState({
+    material_id: "",
+    quantity: "1",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -146,6 +163,26 @@ const AdminDashboard = () => {
         });
       }
       setPremiumUsers(usersWithProfiles);
+    }
+
+    // Fetch access codes with materials
+    const { data: codesData, error: codesError } = await supabase
+      .from("access_codes")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (codesError) {
+      console.error("Error fetching access codes:", codesError);
+    } else {
+      const codesWithMaterials: AccessCodeWithMaterial[] = [];
+      for (const code of codesData || []) {
+        const material = materialsData?.find(m => m.id === code.material_id);
+        codesWithMaterials.push({
+          ...code,
+          material: material ? { title: material.title } : undefined,
+        });
+      }
+      setAccessCodes(codesWithMaterials);
     }
 
     setLoadingData(false);
@@ -358,6 +395,89 @@ const AdminDashboard = () => {
     }
   };
 
+  // Generate random access code
+  const generateCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
+  const handleGenerateCodes = async () => {
+    if (!newCode.material_id) {
+      toast({
+        title: "Missing Field",
+        description: "Please select a material.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const quantity = parseInt(newCode.quantity);
+    const codes: { code: string; material_id: string }[] = [];
+
+    for (let i = 0; i < quantity; i++) {
+      codes.push({
+        code: generateCode(),
+        material_id: newCode.material_id,
+      });
+    }
+
+    const { error } = await supabase
+      .from("access_codes")
+      .insert(codes);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate codes: " + error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Codes Generated",
+        description: `${quantity} access code(s) generated successfully.`,
+      });
+      setNewCode({ material_id: "", quantity: "1" });
+      setShowCodeDialog(false);
+      fetchData();
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const deleteAccessCode = async (id: string) => {
+    const { error } = await supabase
+      .from("access_codes")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete access code.",
+        variant: "destructive",
+      });
+    } else {
+      setAccessCodes(accessCodes.filter(c => c.id !== id));
+      toast({
+        title: "Code Deleted",
+        description: "The access code has been removed.",
+      });
+    }
+  };
+
+  const copyToClipboard = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({
+      title: "Copied",
+      description: `Code "${code}" copied to clipboard.`,
+    });
+  };
+
   // Show login form if not authenticated
   if (!user) {
     return (
@@ -453,7 +573,7 @@ const AdminDashboard = () => {
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Stats */}
-        <div className="grid sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid sm:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -486,13 +606,28 @@ const AdminDashboard = () => {
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/20">
-                  <Users className="h-6 w-6 text-secondary" />
+                  <Ticket className="h-6 w-6 text-secondary" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
-                    {premiumUsers.filter(u => !u.approved).length}
+                    {accessCodes.filter(c => !c.used).length}
                   </p>
-                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-sm text-muted-foreground">Available Codes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                  <Key className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {accessCodes.filter(c => c.used).length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Used Codes</p>
                 </div>
               </div>
             </CardContent>
@@ -505,6 +640,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="materials">
               <FileText className="h-4 w-4 mr-2" />
               Materials
+            </TabsTrigger>
+            <TabsTrigger value="codes">
+              <Key className="h-4 w-4 mr-2" />
+              Access Codes
             </TabsTrigger>
             <TabsTrigger value="users">
               <Users className="h-4 w-4 mr-2" />
@@ -566,6 +705,89 @@ const AdminDashboard = () => {
                               variant="ghost" 
                               size="icon"
                               onClick={() => deleteMaterial(material.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="codes">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Access Codes</CardTitle>
+                  <CardDescription>Generate and manage access codes for materials</CardDescription>
+                </div>
+                <Button onClick={() => setShowCodeDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Generate Codes
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                ) : accessCodes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No access codes yet. Generate some using the button above.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Material</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Used By</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {accessCodes.map((code) => (
+                        <TableRow key={code.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <code className="px-2 py-1 bg-muted rounded font-mono text-sm">
+                                {code.code}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => copyToClipboard(code.code)}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">{code.material?.title || "Unknown"}</span>
+                          </TableCell>
+                          <TableCell>
+                            {code.used ? (
+                              <Badge variant="secondary">Used</Badge>
+                            ) : (
+                              <Badge variant="default">Available</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {code.used_by ? (
+                              <span className="text-sm text-muted-foreground">{code.used_by}</span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => deleteAccessCode(code.id)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -820,6 +1042,66 @@ const AdminDashboard = () => {
             </Button>
             <Button onClick={handleCreatePremiumUser} disabled={isSubmitting}>
               {isSubmitting ? "Creating..." : "Create Premium User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Access Codes Dialog */}
+      <Dialog open={showCodeDialog} onOpenChange={setShowCodeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Access Codes</DialogTitle>
+            <DialogDescription>
+              Generate access codes for a specific material. Share these codes with users after payment.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Material *</Label>
+              <Select 
+                value={newCode.material_id} 
+                onValueChange={(v) => setNewCode({ ...newCode, material_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a material" />
+                </SelectTrigger>
+                <SelectContent>
+                  {materials.map((material) => (
+                    <SelectItem key={material.id} value={material.id}>
+                      {material.title} ({material.category})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Number of Codes</Label>
+              <Select 
+                value={newCode.quantity} 
+                onValueChange={(v) => setNewCode({ ...newCode, quantity: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 Code</SelectItem>
+                  <SelectItem value="5">5 Codes</SelectItem>
+                  <SelectItem value="10">10 Codes</SelectItem>
+                  <SelectItem value="25">25 Codes</SelectItem>
+                  <SelectItem value="50">50 Codes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCodeDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleGenerateCodes} disabled={isSubmitting}>
+              {isSubmitting ? "Generating..." : "Generate Codes"}
             </Button>
           </DialogFooter>
         </DialogContent>
