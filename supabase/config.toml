@@ -1,1 +1,13 @@
 project_id = "miutgtvsugitvswoitqq"
+
+[functions.azampay-auth]
+verify_jwt = false
+
+[functions.azampay-checkout]
+verify_jwt = false
+
+[functions.azampay-callback]
+verify_jwt = false
+
+[functions.payment-status]
+verify_jwt = false

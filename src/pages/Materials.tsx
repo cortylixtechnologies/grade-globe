@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Search, Download, MessageCircle, BookOpen, Calendar, FileText, Lock, Crown } from "lucide-react";
+import { Search, Download, MessageCircle, BookOpen, Calendar, FileText, Lock, Crown, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { Link } from "react-router-dom";
+import PaymentModal from "@/components/materials/PaymentModal";
 
 type Material = Tables<"materials">;
+
+const BASIC_PRICE = 2000; // TZS per material
 
 const Materials = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -23,6 +26,7 @@ const Materials = () => {
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [showAccessDialog, setShowAccessDialog] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const { toast } = useToast();
   const { user, isPremium } = useAuth();
@@ -58,6 +62,23 @@ const Materials = () => {
   const handleRequestAccess = (material: Material) => {
     setSelectedMaterial(material);
     setShowRequestDialog(true);
+  };
+
+  const handleBuyNow = (material: Material) => {
+    setSelectedMaterial(material);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = (accessCode: string, driveLink: string) => {
+    toast({
+      title: "Payment Successful! 🎉",
+      description: accessCode 
+        ? `Your access code is: ${accessCode}` 
+        : "You can now download the material.",
+    });
+    if (driveLink) {
+      window.open(driveLink, "_blank");
+    }
   };
 
   const handleDownload = (material: Material) => {
@@ -260,13 +281,13 @@ const Materials = () => {
                       ) : (
                         <>
                           <Button 
-                            variant="basic" 
+                            variant="default" 
                             size="sm" 
                             className="flex-1"
-                            onClick={() => handleRequestAccess(material)}
+                            onClick={() => handleBuyNow(material)}
                           >
-                            <MessageCircle className="h-4 w-4 mr-1" />
-                            Request
+                            <CreditCard className="h-4 w-4 mr-1" />
+                            Buy Now
                           </Button>
                           <Button 
                             variant="outline" 
@@ -376,6 +397,18 @@ const Materials = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        open={showPaymentModal}
+        onOpenChange={setShowPaymentModal}
+        material={selectedMaterial ? {
+          id: selectedMaterial.id,
+          title: selectedMaterial.title,
+          price: BASIC_PRICE,
+        } : null}
+        onSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 };

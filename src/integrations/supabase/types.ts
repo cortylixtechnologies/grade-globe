@@ -91,6 +91,69 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          access_code_id: string | null
+          amount: number
+          azampay_reference: string | null
+          callback_data: Json | null
+          created_at: string
+          currency: string
+          external_id: string
+          id: string
+          material_id: string | null
+          provider: string
+          status: string
+          updated_at: string
+          user_phone: string
+        }
+        Insert: {
+          access_code_id?: string | null
+          amount: number
+          azampay_reference?: string | null
+          callback_data?: Json | null
+          created_at?: string
+          currency?: string
+          external_id: string
+          id?: string
+          material_id?: string | null
+          provider: string
+          status?: string
+          updated_at?: string
+          user_phone: string
+        }
+        Update: {
+          access_code_id?: string | null
+          amount?: number
+          azampay_reference?: string | null
+          callback_data?: Json | null
+          created_at?: string
+          currency?: string
+          external_id?: string
+          id?: string
+          material_id?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          user_phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_access_code_id_fkey"
+            columns: ["access_code_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       premium_subscriptions: {
         Row: {
           approved: boolean
