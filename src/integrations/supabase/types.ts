@@ -16,28 +16,46 @@ export type Database = {
     Tables: {
       access_codes: {
         Row: {
+          admin_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
           code: string
           created_at: string
           id: string
           material_id: string
+          requested_at: string | null
+          requested_by: string | null
+          status: string
           used: boolean
           used_at: string | null
           used_by: string | null
         }
         Insert: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           code: string
           created_at?: string
           id?: string
           material_id: string
+          requested_at?: string | null
+          requested_by?: string | null
+          status?: string
           used?: boolean
           used_at?: string | null
           used_by?: string | null
         }
         Update: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           code?: string
           created_at?: string
           id?: string
           material_id?: string
+          requested_at?: string | null
+          requested_by?: string | null
+          status?: string
           used?: boolean
           used_at?: string | null
           used_by?: string | null
