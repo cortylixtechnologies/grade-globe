@@ -30,7 +30,9 @@ import {
   LogIn,
   Key,
   Copy,
-  Ticket
+  Ticket,
+  Clock,
+  Phone
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -478,6 +480,55 @@ const AdminDashboard = () => {
     });
   };
 
+  const approveRequest = async (codeId: string) => {
+    const { error } = await supabase
+      .from("access_codes")
+      .update({ 
+        status: "approved",
+        approved_by: user?.id,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", codeId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to approve request.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Request Approved",
+        description: "The user can now use their control number to access the material.",
+      });
+      fetchData();
+    }
+  };
+
+  const rejectRequest = async (codeId: string) => {
+    const { error } = await supabase
+      .from("access_codes")
+      .update({ 
+        status: "rejected",
+        admin_notes: "Payment not verified",
+      })
+      .eq("id", codeId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reject request.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Request Rejected",
+        description: "The control number has been marked as rejected.",
+      });
+      fetchData();
+    }
+  };
+
   // Show login form if not authenticated
   if (!user) {
     return (
@@ -610,9 +661,24 @@ const AdminDashboard = () => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
-                    {accessCodes.filter(c => !c.used).length}
+                    {accessCodes.filter(c => !c.used && (c as any).status !== 'pending' && (c as any).status !== 'rejected').length}
                   </p>
                   <p className="text-sm text-muted-foreground">Available Codes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                  <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {accessCodes.filter(c => (c as any).status === 'pending').length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Pending Requests</p>
                 </div>
               </div>
             </CardContent>
@@ -635,8 +701,17 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Tabs */}
-        <Tabs defaultValue="materials" className="space-y-6">
+        <Tabs defaultValue="requests" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="requests">
+              <Clock className="h-4 w-4 mr-2" />
+              Pending Requests
+              {accessCodes.filter(c => (c as any).status === 'pending').length > 0 && (
+                <Badge variant="destructive" className="ml-2 h-5 px-1.5">
+                  {accessCodes.filter(c => (c as any).status === 'pending').length}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="materials">
               <FileText className="h-4 w-4 mr-2" />
               Materials
@@ -650,6 +725,95 @@ const AdminDashboard = () => {
               Premium Users
             </TabsTrigger>
           </TabsList>
+
+          {/* Pending Requests Tab */}
+          <TabsContent value="requests">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Access Requests</CardTitle>
+                <CardDescription>Review and approve control number requests from users</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingData ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                ) : accessCodes.filter(c => (c as any).status === 'pending').length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No pending requests. Users will appear here when they request access.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Control Number</TableHead>
+                        <TableHead>Material</TableHead>
+                        <TableHead>Requested By</TableHead>
+                        <TableHead>Requested At</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {accessCodes
+                        .filter(c => (c as any).status === 'pending')
+                        .map((code) => (
+                          <TableRow key={code.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <code className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 rounded font-mono text-sm text-amber-800 dark:text-amber-200">
+                                  {code.code}
+                                </code>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => copyToClipboard(code.code)}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm">{code.material?.title || "Unknown"}</span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 text-sm">
+                                <Phone className="h-3 w-3 text-muted-foreground" />
+                                {(code as any).requested_by || "N/A"}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {(code as any).requested_at 
+                                  ? new Date((code as any).requested_at).toLocaleString()
+                                  : "N/A"
+                                }
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right space-x-2">
+                              <Button 
+                                variant="default"
+                                size="sm"
+                                onClick={() => approveRequest(code.id)}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                onClick={() => rejectRequest(code.id)}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="materials">
             <Card>
@@ -733,7 +897,7 @@ const AdminDashboard = () => {
               <CardContent>
                 {loadingData ? (
                   <div className="text-center py-8 text-muted-foreground">Loading...</div>
-                ) : accessCodes.length === 0 ? (
+                ) : accessCodes.filter(c => (c as any).status !== 'pending').length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No access codes yet. Generate some using the button above.
                   </div>
@@ -749,51 +913,62 @@ const AdminDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {accessCodes.map((code) => (
-                        <TableRow key={code.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <code className="px-2 py-1 bg-muted rounded font-mono text-sm">
-                                {code.code}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => copyToClipboard(code.code)}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm">{code.material?.title || "Unknown"}</span>
-                          </TableCell>
-                          <TableCell>
-                            {code.used ? (
-                              <Badge variant="secondary">Used</Badge>
-                            ) : (
-                              <Badge variant="default">Available</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {code.used_by ? (
-                              <span className="text-sm text-muted-foreground">{code.used_by}</span>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => deleteAccessCode(code.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {accessCodes
+                        .filter(c => (c as any).status !== 'pending')
+                        .map((code) => {
+                          const status = (code as any).status || 'available';
+                          return (
+                            <TableRow key={code.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <code className="px-2 py-1 bg-muted rounded font-mono text-sm">
+                                    {code.code}
+                                  </code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => copyToClipboard(code.code)}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm">{code.material?.title || "Unknown"}</span>
+                              </TableCell>
+                              <TableCell>
+                                {code.used ? (
+                                  <Badge variant="secondary">Used</Badge>
+                                ) : status === 'rejected' ? (
+                                  <Badge variant="destructive">Rejected</Badge>
+                                ) : status === 'approved' ? (
+                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Approved</Badge>
+                                ) : (
+                                  <Badge variant="default">Available</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {code.used_by ? (
+                                  <span className="text-sm text-muted-foreground">{code.used_by}</span>
+                                ) : (code as any).requested_by ? (
+                                  <span className="text-sm text-muted-foreground">{(code as any).requested_by}</span>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => deleteAccessCode(code.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                     </TableBody>
                   </Table>
                 )}
