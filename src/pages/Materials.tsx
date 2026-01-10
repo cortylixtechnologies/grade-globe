@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Search, Download, MessageCircle, BookOpen, Calendar, FileText, Lock, Crown, CreditCard, Info, X } from "lucide-react";
+import { Search, Download, MessageCircle, BookOpen, Calendar, FileText, Lock, Crown, Info, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -228,15 +228,15 @@ const Materials = () => {
           </div>
         </section>
 
-        {/* Testing Mode Banner */}
+        {/* Info Banner */}
         {showTestingBanner && (
           <div className="container mx-auto px-4 py-4">
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
-              <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Testing Mode:</strong> Mobile money payments are currently being tested. 
-                  For guaranteed access, please use the <strong>Request via WhatsApp</strong> button.
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>How to get materials:</strong> Use the <strong>Request via WhatsApp</strong> button to request access. 
+                  After payment confirmation, you'll receive an access code to download your material.
                 </p>
               </div>
               <button 
@@ -244,7 +244,7 @@ const Materials = () => {
                   setShowTestingBanner(false);
                   localStorage.setItem('hideTestingBanner', 'true');
                 }}
-                className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
                 aria-label="Dismiss banner"
               >
                 <X className="h-4 w-4" />
@@ -307,37 +307,26 @@ const Materials = () => {
                           Download
                         </Button>
                       ) : (
-                        <>
+                        <div className="flex gap-2 w-full">
                           <Button 
                             variant="whatsapp" 
                             size="sm" 
-                            className="w-full"
+                            className="flex-1"
                             onClick={() => handleRequestAccess(material)}
                           >
                             <MessageCircle className="h-4 w-4 mr-1" />
                             Request via WhatsApp
                           </Button>
-                          <div className="flex gap-2 w-full">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => handleBuyNow(material)}
-                            >
-                              <CreditCard className="h-4 w-4 mr-1" />
-                              Pay Mobile
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => handleDownload(material)}
-                            >
-                              <Lock className="h-4 w-4 mr-1" />
-                              Enter Code
-                            </Button>
-                          </div>
-                        </>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleDownload(material)}
+                          >
+                            <Lock className="h-4 w-4 mr-1" />
+                            Enter Code
+                          </Button>
+                        </div>
                       )}
                     </CardFooter>
                   </Card>
