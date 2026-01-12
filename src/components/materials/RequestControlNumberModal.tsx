@@ -101,7 +101,7 @@ const RequestControlNumberModal = ({ open, onOpenChange, material }: RequestCont
   };
 
   const openWhatsAppWithControlNumber = () => {
-    const whatsappNumber = "255756377013";
+    const whatsappNumber = "255768604596";
     const message = encodeURIComponent(
       `Hello GeoPapers! 📚\n\n` +
       `I have requested access to a material:\n` +
@@ -198,7 +198,7 @@ const RequestControlNumberModal = ({ open, onOpenChange, material }: RequestCont
                     <p className="font-medium mb-1">Pay via Mobile Money:</p>
                     <p className="flex items-center gap-2">
                       <Phone className="h-3 w-3" />
-                      M-Pesa / Tigo Pesa: <strong>0756 377 013</strong>
+                      M-Pesa / Tigo Pesa: <strong>0768 604 596</strong>
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Name: Advanced Socratic Association
