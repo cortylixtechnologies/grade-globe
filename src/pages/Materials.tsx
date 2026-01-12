@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Search, Download, BookOpen, Calendar, FileText, Lock, Crown, Info, X, Ticket } from "lucide-react";
+import { Search, Download, BookOpen, Calendar, FileText, Lock, Crown, Info, X, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { Link } from "react-router-dom";
-import RequestControlNumberModal from "@/components/materials/RequestControlNumberModal";
 
 type Material = Tables<"materials">;
 
@@ -23,7 +22,6 @@ const Materials = () => {
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [accessCodeInput, setAccessCodeInput] = useState("");
   const [showAccessDialog, setShowAccessDialog] = useState(false);
-  const [showControlNumberModal, setShowControlNumberModal] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [showTestingBanner, setShowTestingBanner] = useState(() => {
     return localStorage.getItem('hideTestingBanner') !== 'true';
@@ -60,8 +58,18 @@ const Materials = () => {
   });
 
   const handleRequestAccess = (material: Material) => {
-    setSelectedMaterial(material);
-    setShowControlNumberModal(true);
+    const whatsappNumber = "255768604596";
+    const message = encodeURIComponent(
+      `Hello GeoPapers! 📚\n\n` +
+      `I would like to request access to the following material:\n\n` +
+      `📄 *Material:* ${material.title}\n` +
+      `📁 *Category:* ${material.category}\n` +
+      `📅 *Year:* ${material.year}\n` +
+      `💰 *Amount:* 2,000 TZS\n\n` +
+      `Please send me payment instructions and the access code after payment.\n\n` +
+      `Thank you!`
+    );
+    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank");
   };
 
   const handleDownload = (material: Material) => {
@@ -211,9 +219,9 @@ const Materials = () => {
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
               <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>How to get materials:</strong> Use the <strong>Request via WhatsApp</strong> button to request access. 
-                  After payment confirmation, you'll receive an access code to download your material.
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>How to get materials:</strong> Click <strong>Request Access</strong> to send your request via WhatsApp. 
+                After payment confirmation, you'll receive an access code to download your material.
                 </p>
               </div>
               <button 
@@ -286,12 +294,12 @@ const Materials = () => {
                       ) : (
                         <div className="flex gap-2 w-full">
                           <Button 
-                            variant="default" 
+                            variant="whatsapp" 
                             size="sm" 
                             className="flex-1"
                             onClick={() => handleRequestAccess(material)}
                           >
-                            <Ticket className="h-4 w-4 mr-1" />
+                            <MessageCircle className="h-4 w-4 mr-1" />
                             Request Access
                           </Button>
                           <Button 
@@ -371,15 +379,6 @@ const Materials = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Request Control Number Modal */}
-      <RequestControlNumberModal
-        open={showControlNumberModal}
-        onOpenChange={setShowControlNumberModal}
-        material={selectedMaterial ? {
-          id: selectedMaterial.id,
-          title: selectedMaterial.title,
-        } : null}
-      />
     </div>
   );
 };
